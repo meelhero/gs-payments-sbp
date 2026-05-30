@@ -6,73 +6,124 @@ export default async function handler(req, res) {
     });
   }
 
-  const { product, amount, email } = req.body;
+  try {
 
-  const auth = Buffer
-    .from(
-      process.env.YOOKASSA_SHOP_ID +
-      ':' +
-      process.env.YOOKASSA_SECRET_KEY
-    )
-    .toString('base64');
+    const {
+      product,
+      amount,
+      email,
+      phone
+    } = req.body;
 
-  const response = await fetch(
-    'https://api.yookassa.ru/v3/payments',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-        'Idempotence-Key': crypto.randomUUID()
-      },
-      body: JSON.stringify({
-        amount: {
-          value: amount,
-          currency: 'RUB'
+    const customer = {};
+
+    if (email && email.trim()) {
+      customer.email = email.trim();
+    }
+
+    if (phone && phone.trim()) {
+      customer.phone = phone.trim();
+    }
+
+    if (
+      !customer.email &&
+      !customer.phone
+    ) {
+      return res.status(400).json({
+        error:
+          'Укажите email или телефон для чека'
+      });
+    }
+
+    const auth = Buffer
+      .from(
+        process.env.YOOKASSA_SHOP_ID +
+        ':' +
+        process.env.YOOKASSA_SECRET_KEY
+      )
+      .toString('base64');
+
+    const response = await fetch(
+      'https://api.yookassa.ru/v3/payments',
+      {
+        method: 'POST',
+
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
+          'Idempotence-Key': crypto.randomUUID()
         },
 
-        capture: true,
-        description: product,
+        body: JSON.stringify({
 
-        confirmation: {
-          type: 'redirect',
-          return_url: 'https://grange-see.com'
-        },
-
-        payment_method_data: {
-          type: 'sbp'
-        },
-
-        receipt: {
-          customer: {
-            email: email
+          amount: {
+            value: amount,
+            currency: 'RUB'
           },
 
-          items: [
-            {
-              description: product,
-              quantity: '1.00',
+          capture: true,
 
-              amount: {
-                value: amount,
-                currency: 'RUB'
-              },
+          description: product,
 
-              vat_code: 1
-            }
-          ]
-        }
-      })
+          confirmation: {
+            type: 'redirect',
+            return_url: 'https://grange-see.com'
+          },
+
+          payment_method_data: {
+            type: 'sbp'
+          },
+
+          receipt: {
+
+            customer,
+
+            items: [
+              {
+                description: product,
+
+                quantity: '1.00',
+
+                amount: {
+                  value: amount,
+                  currency: 'RUB'
+                },
+
+                vat_code: 1
+              }
+            ]
+          }
+        })
+      }
+    );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      return res
+        .status(400)
+        .json(data);
     }
-  );
 
-  const data = await response.json();
+    return res.status(200).json({
 
-  if (!data.confirmation) {
-    return res.status(400).json(data);
+      paymentId: data.id,
+
+      status: data.status,
+
+      url:
+        data.confirmation
+          ?.confirmation_url
+
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      error: error.message
+    });
+
   }
 
-  return res.status(200).json({
-    url: data.confirmation.confirmation_url
-  });
 }
