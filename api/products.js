@@ -1,102 +1,129 @@
 export default async function handler(req, res) {
 
-  const response = await fetch(
-    'https://grange-see.com/tstore/yml/19bc76915fadb8f217eaeda56f6f0ff5.yml'
+  res.setHeader(
+    'Access-Control-Allow-Origin',
+    'https://grange-see.com'
   );
 
-  const xml = await response.text();
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, OPTIONS'
+  );
 
-  const offers =
-    xml.match(/<offer[\s\S]*?<\/offer>/g) || [];
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type'
+  );
 
-  const products = [];
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  offers.forEach(offer => {
+  try {
 
-    const nameMatch =
-      offer.match(/<name>(.*?)<\/name>/s);
+    const response = await fetch(
+      'https://grange-see.com/tstore/yml/19bc76915fadb8f217eaeda56f6f0ff5.yml'
+    );
 
-    const priceMatch =
-      offer.match(/<price>(.*?)<\/price>/s);
+    const xml = await response.text();
 
-    const colorMatch =
-      offer.match(
-        /<param name="Цвет">(.*?)<\/param>/s
-      );
+    const offers =
+      xml.match(/<offer[\s\S]*?<\/offer>/g) || [];
 
-    const accessoryMatch =
-      offer.match(
-        /<param name="Обвес">(.*?)<\/param>/s
-      );
+    const products = [];
 
-    const urlMatch =
-      offer.match(/<url>(.*?)<\/url>/s);
+    offers.forEach(offer => {
 
-    if (!nameMatch || !priceMatch) {
-      return;
-    }
+      const nameMatch =
+        offer.match(/<name>(.*?)<\/name>/s);
 
-    const name =
-      nameMatch[1].trim();
+      const priceMatch =
+        offer.match(/<price>(.*?)<\/price>/s);
 
-    // Исключаем сертификаты
-    if (
-      name.includes(
-        'Подарочный электронный сертификат'
-      )
-    ) {
-      return;
-    }
+      const colorMatch =
+        offer.match(
+          /<param name="Цвет">(.*?)<\/param>/s
+        );
 
-    const price =
-      priceMatch[1].trim();
+      const accessoryMatch =
+        offer.match(
+          /<param name="Обвес">(.*?)<\/param>/s
+        );
 
-    const color =
-      colorMatch
-        ? colorMatch[1].trim()
-        : '';
+      const urlMatch =
+        offer.match(/<url>(.*?)<\/url>/s);
 
-    const accessory =
-      accessoryMatch
-        ? accessoryMatch[1].trim()
-        : '';
+      if (!nameMatch || !priceMatch) {
+        return;
+      }
 
-    const parts = [];
+      const name =
+        nameMatch[1].trim();
 
-    if (color) {
-      parts.push(color);
-    }
+      if (
+        name.includes(
+          'Подарочный электронный сертификат'
+        )
+      ) {
+        return;
+      }
 
-    if (accessory) {
-      parts.push(accessory);
-    }
+      const price =
+        priceMatch[1].trim();
 
-    const fullName =
-      parts.length
-        ? `${name} — ${parts.join(' / ')}`
-        : name;
+      const color =
+        colorMatch
+          ? colorMatch[1].trim()
+          : '';
 
-    products.push({
-      name,
-      fullName,
-      price,
-      color,
-      accessory,
-      url: urlMatch
-        ? urlMatch[1].trim()
-        : ''
+      const accessory =
+        accessoryMatch
+          ? accessoryMatch[1].trim()
+          : '';
+
+      const parts = [];
+
+      if (color) {
+        parts.push(color);
+      }
+
+      if (accessory) {
+        parts.push(accessory);
+      }
+
+      const fullName =
+        parts.length
+          ? `${name} — ${parts.join(' / ')}`
+          : name;
+
+      products.push({
+        name,
+        fullName,
+        price,
+        color,
+        accessory,
+        url: urlMatch
+          ? urlMatch[1].trim()
+          : ''
+      });
+
     });
 
-  });
+    products.sort((a, b) =>
+      a.fullName.localeCompare(
+        b.fullName,
+        'ru'
+      )
+    );
 
-  // Сортировка по названию
-  products.sort((a, b) =>
-    a.fullName.localeCompare(
-      b.fullName,
-      'ru'
-    )
-  );
+    return res.status(200).json(products);
 
-  res.status(200).json(products);
+  } catch (error) {
+
+    return res.status(500).json({
+      error: error.message
+    });
+
+  }
 
 }
