@@ -14,21 +14,33 @@ export default async function handler(req, res) {
   offers.forEach(offer => {
 
     const nameMatch =
-      offer.match(/<name><!\[CDATA\[(.*?)\]\]><\/name>/);
+      offer.match(/<name>(.*?)<\/name>/s);
 
     const priceMatch =
-      offer.match(/<price>(.*?)<\/price>/);
+      offer.match(/<price>(.*?)<\/price>/s);
 
     const colorMatch =
-      offer.match(/<param name="Цвет">(.*?)<\/param>/);
+      offer.match(
+        /<param name="Цвет">(.*?)<\/param>/s
+      );
 
     const accessoryMatch =
-      offer.match(/<param name="Обвес">(.*?)<\/param>/);
+      offer.match(
+        /<param name="Обвес">(.*?)<\/param>/s
+      );
 
-    if (!nameMatch || !priceMatch) return;
+    const urlMatch =
+      offer.match(/<url>(.*?)<\/url>/s);
 
-    const name = nameMatch[1];
-    const price = priceMatch[1];
+    if (!nameMatch || !priceMatch) {
+      return;
+    }
+
+    const name =
+      nameMatch[1].trim();
+
+    const price =
+      priceMatch[1].trim();
 
     const color =
       colorMatch
@@ -58,9 +70,12 @@ export default async function handler(req, res) {
     products.push({
       name,
       fullName,
+      price,
       color,
       accessory,
-      price
+      url: urlMatch
+        ? urlMatch[1].trim()
+        : ''
     });
 
   });
