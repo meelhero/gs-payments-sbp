@@ -39,6 +39,15 @@ export default async function handler(req, res) {
     const name =
       nameMatch[1].trim();
 
+    // Исключаем сертификаты
+    if (
+      name.includes(
+        'Подарочный электронный сертификат'
+      )
+    ) {
+      return;
+    }
+
     const price =
       priceMatch[1].trim();
 
@@ -80,5 +89,14 @@ export default async function handler(req, res) {
 
   });
 
+  // Сортировка по названию
+  products.sort((a, b) =>
+    a.fullName.localeCompare(
+      b.fullName,
+      'ru'
+    )
+  );
+
   res.status(200).json(products);
+
 }
